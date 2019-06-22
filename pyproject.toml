@@ -1,17 +1,35 @@
 [tool.poetry]
-name = "orz"
-version = "0.1.0"
-description = ""
-authors = ["顏孜羲 <joseph.yen@gmail.com>"]
-license = "Apache-2.0"
+name = 'orz'
+version = '0.1.0'
+description = 'Result(Either) library for handling errors in monadic way'
+authors = ['顏孜羲 <joseph.yen@gmail.com>']
+license = 'Apache-2.0'
+repository = 'https://github.com/d2207197/orz'
+# documentation =
+# homepage =
+
+keywords = [
+  'result', 'monad', 'error', 'exception',
+  'either', 'functional', 'error handling']
+classifiers = [
+  'Development Status :: 4 - Beta',
+  'Intended Audience :: Developers',
+  'Topic :: Software Development :: Libraries',
+  'Programming Language :: Python :: 2.7',
+  'Programming Language :: Python :: 3.5',
+  'Programming Language :: Python :: 3.6',
+  'Programming Language :: Python :: 3.7',
+]
 
 [tool.poetry.dependencies]
-python = "^2.7 || ^3.5"
+python = '^2.7 || ^3.5'
 
 [tool.poetry.dev-dependencies]
-pytest = "^4.6"
-pytest-pudb = "^0.7.0"
+pytest = '^4.6'
+pytest-pudb = '^0.7.0'
+python-language-server = '^0.26.1'
+pyls-isort = '^0.1.1'
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ['poetry>=0.12']
+build-backend = 'poetry.masonry.api'

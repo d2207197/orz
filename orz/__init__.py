@@ -1,5 +1,12 @@
-from .result import Result, Ok, Err
+from .result import Result, Ok, Err, as_result, catch, resultify, first_ok
 from .exceptions import InvalidValueError
 
-ok = Ok
-err = Err
+__all__ = [
+    'Result',
+    'Ok',
+    'Err',
+    'as_result'
+    'catch',
+    'resultify',
+    'first_ok'
+]

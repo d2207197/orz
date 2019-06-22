@@ -1,10 +1,15 @@
 import inspect
 import warnings
 from abc import abstractmethod, abstractproperty
-from .exceptions import InvalidValueError
 from functools import wraps
 
-__all__ = ["Result", "Ok", "Err"]
+from .exceptions import InvalidValueError
+
+__all__ = ["Result", "Ok", "Err", "as_result", "catch", "resultify", "first_ok"]
+
+
+class UnSet(object):
+    pass
 
 
 class Result(object):
@@ -53,15 +58,15 @@ class Result(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def and_then(self, func, catch_raises=None):
+    def then(self, func, catch_raises=None):
         raise NotImplementedError()
 
     @abstractmethod
-    def guard(self, func, error):
+    def check(self, func, error=UnSet):
         raise NotImplementedError()
 
     @abstractmethod
-    def or_else(self, func):
+    def err_then(self, func, catch_raises=None):
         raise NotImplementedError()
 
     @abstractmethod
@@ -73,82 +78,155 @@ class Result(object):
         raise NotImplementedError()
 
     @classmethod
+    def as_result(cls, obj):
+        if isinstance(obj, Result):
+            return obj
+
+        return Ok(obj)
+
+    @classmethod
+    def is_result(cls, obj):
+        if isinstance(obj, Result):
+            return True
+
+        return False
+
+    @classmethod
+    def all(cls, *results, **kw_results):
+        """an Ok of all values if all ok, or an Err of first Err
+
+        Examples
+        --------
+        >>> d = {'n1': 1, 'n2': 2}
+        >>> n1_rz = orz.catch(lambda: d['n1'], raises=KeyError)
+        >>> n2_rz = orz.catch(lambda: d['n2'], raises=KeyError)
+        >>> (orz.all(n1_rz, n2_rz)
+        ...  .then(lambda vs: sum(vs))
+        ...  .get_or_raise()
+        ... )
+        3
+
+        >>> (orz.all(n1=n1_rz, n2=n2_rz)
+        ...  .then(lambda n1, n2: sum(vs))
+        ...  .get_or_raise()
+        ... )
+        3
+
+        Parameters
+        ----------
+        results : Iterator[orz.Result]
+
+        Returns
+        -------
+        orz.Result
+
+        """
+        rzs = []
+        for rz in results:
+            if rz.is_err():
+                return rz
+            elif rz.is_ok():
+                rzs.append(rz)
+
+        return Ok(rzs)
+
+    @classmethod
+    def resultify(cls, raises=(Exception,), func=None):
+        if isinstance(raises, list):
+            raises = tuple(raises)
+        _nonlocal = {"func": func}
+
+        def wrapped(*args, **kwargs):
+            try:
+                v = _nonlocal["func"](*args, **kwargs)
+            except raises as e:
+                return Err(e)
+            else:
+                return Ok(v)
+
+        def wrapper(wrapper_func):
+            _nonlocal["func"] = wrapper_func
+
+            return wrapped
+
+        if func is None:
+            return wrapper
+        else:
+            return wrapped
+
+    @classmethod
+    def catch(cls, raises=(Exception,), func=None, *args, **kwargs):
+        """catch exception and return Ok or Err
+
+        Examples
+        --------
+        >>> d = {'a': 40}
+        >>> get_value = lambda k: d[k]
+        >>> (orz.catch(get_value, 'a', raises=KeyError)
+        ...     .map(lambda v: v + 2)
+        ...     .get_or(0))
+        42
+        >>> (orz.catch(get_value, 'b', raises=[KeyError])
+        ...     .map(lambda v: v + 2)
+        ...     .get_or(0))
+        0
+
+        Parameters
+        ----------
+        raises : Tuple[Exception, ...]
+            exceptions to be catch
+        func : Function
+            function will be called without arguments
+        *args
+            arguments for `func`
+        **kwargs
+            arguments for `func`
+
+        Returns
+        -------
+        orz.Result
+
+        """
+        if not callable(func):
+            raise ValueError("value of `func` argument should be a callable")
+        if isinstance(raises, list):
+            raises = tuple(raises)
+        try:
+            v = func(*args, **kwargs)
+        except raises as e:
+            return Err(e)
+        else:
+            return Ok(v)
+
+    @classmethod
     def first_ok(cls, results):
         """first ok or last err
 
-        >>> Result.all([f, g, h]).then(lambda f, g, h: )
+        Examples
+        --------
+        >>> d = {'legacy_key': 42}
+        >>> (orz.first_ok([
+        ...      orz.ok(d.get('key')).check(lambda v: v is not None)
+        ...      orz.ok(d.get('legacy_key')).check(lambda v: v is not None))
+        ...    ]
+        ...  .get_or(0)
+        ... )
+        42
 
-        >>> Result.first_ok([Err('wrong'), Ok(42), Err('error')])
-        Ok(42)
-        >>> Result.first_ok(Ok(i) if i % 3 == 2 else Err(i) for i in range(6))
-        Ok(2)
+        Parameters
+        ----------
+        results : Iterator[Result]
+
+        Returns
+        -------
+        Result
+            first ok or last err in parameters
         """
         result = None
         for result in results:
             if result.is_ok():
                 return result
         return result
-
-    @classmethod
-    def first_err(cls, results):
-        """first err or last ok"""
-        result = None
-        for result in results:
-            if result.is_err():
-                return result
-        return result
-
-    @classmethod
-    def capture(cls, f, errors=(Exception,)):
-        """capture exception and return Result
-
-        >>> d = {'a': 40}
-        >>> orz.capture(lambda: d['a'], KeyError).map(lambda v: v + 2).get_or(0)
-        42
-        >>> orz.capture(lambda: d['b'], KeyError).map(lambda v: v + 2).get_or(0)
-        0
-        """
-        try:
-            v = f()
-        except errors as e:
-            return Err(e)
-        else:
-            return Ok(v)
-
-    @classmethod
-    def silent(cls, f_or_error, *errors):
-        """
-        >>> @silent
-        >>>
-        """
-
-        if inspect.isclass(f_or_error) and issubclass(f_or_error, Exception):
-            errors = (f_or_error,) + tuple(more_errors)
-
-            def deco(f):
-                return cls._wrap_exceptable(f, errors)
-
-            return deco
-        if callable(f_or_error):
-            f = f_or_error
-            return cls._wrap_exceptable(f, errors)
-
-    @classmethod
-    def _wrap_exceptable(cls, f, errors):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            try:
-                res = f(*args, **kwargs)
-            except errors:
-                return Nothing
-            else:
-                return Some(res)
-
-        return wrapper
-
-
-class UnSet(object):
-    pass
 
 
 class Ok(Result):
@@ -197,7 +275,7 @@ class Ok(Result):
     def get_or_raise(self, default_error=None):
         return self._value
 
-    def and_then(self, func, catch_raises=None):
+    def then(self, func, catch_raises=None):
         if catch_raises is None:
             result = func(self._value)
         else:
@@ -211,17 +289,17 @@ class Ok(Result):
 
         return result
 
-    def guard(self, func, error=UnSet):
+    def check(self, func, error=UnSet):
         if func(self._value):
             return self
         else:
             if error is UnSet:
                 error = InvalidValueError(
-                    "{} was failed to pass the guard: {!r}".format(self, func)
+                    "{} was failed to pass the check: {!r}".format(self, func)
                 )
             return Err(error)
 
-    def or_else(self, result_func):
+    def err_then(self, func, catch_raises=None):
         return self
 
 
@@ -274,18 +352,31 @@ class Err(Result):
         else:
             raise self._error
 
-    def and_then(self, func):
+    def then(self, func):
         return self
 
-    def guard(self, func, error=UnSet):
+    def check(self, func, error=UnSet):
         return self
 
-    def or_else(self, func):
-        result = func(self._error)
+    def err_then(self, func, catch_raises=None):
+        if catch_raises is None:
+            result = func(self._error)
+        else:
+            try:
+                result = func(self._error)
+            except catch_raises as e:
+                result = Err(e)
+
         if not isinstance(result, Result):
-            raise ValueError("function should return a Result object")
+            result = Ok(result)
+
         return result
 
 
 Result.Ok = Ok
 Result.Err = Err
+
+as_result = Result.as_result
+first_ok = Result.first_ok
+catch = Result.catch
+resultify = Result.resultify
