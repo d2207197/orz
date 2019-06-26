@@ -180,6 +180,14 @@ def test_check():
     assert rz.is_err()
     assert rz == orz.Err("failed")
 
+    rz = orz.Ok(3).check(lambda v: v < 0, err='check failed')
+    assert rz.is_err()
+    assert rz == orz.Err("check failed")
+
+    rz = orz.Ok(3).check(lambda v: v < 0, err=orz.Err('check failed 2'))
+    assert rz.is_err()
+    assert rz == orz.Err("check failed 2")
+
 
 def test_err_then(capsys):
     rz = orz.Ok(3).err_then(lambda error: print(error))

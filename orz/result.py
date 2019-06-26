@@ -11,6 +11,8 @@ __all__ = ["Result", "Ok", "Err", "as_result", "catch", "resultify", "first_ok"]
 class UnSet(object):
     pass
 
+class NonLocal(object):
+    pass
 
 class Result(object):
     @abstractmethod
@@ -93,7 +95,7 @@ class Result(object):
 
     @classmethod
     def all(cls, *results, **kw_results):
-        """an Ok of all values if all ok, or an Err of first Err
+        """returns an Ok of all values if all ok, or an Err of first Err
 
         Examples
         --------
@@ -131,22 +133,56 @@ class Result(object):
         return Ok(rzs)
 
     @classmethod
+    def first_ok(cls, results):
+        """first ok or last err
+
+        Examples
+        --------
+        >>> d = {'legacy_key': 42}
+        >>> (orz.first_ok([
+        ...      orz.ok(d.get('key')).check(lambda v: v is not None)
+        ...      orz.ok(d.get('legacy_key')).check(lambda v: v is not None))
+        ...    ]
+        ...  .get_or(0)
+        ... )
+        42
+
+        Parameters
+        ----------
+        results : Iterator[Result]
+
+        Returns
+        -------
+        Result
+            first ok or last err in parameters
+        """
+        result = None
+        for result in results:
+            if result.is_ok():
+                return result
+        return result
+
+
+    @classmethod
     def resultify(cls, raises=(Exception,), func=None):
         if isinstance(raises, list):
             raises = tuple(raises)
-        _nonlocal = {"func": func}
+        non_local = NonLocal()
+        non_local.func = func
 
         def wrapped(*args, **kwargs):
             try:
-                v = _nonlocal["func"](*args, **kwargs)
+                v = non_local.func(*args, **kwargs)
             except raises as e:
                 return Err(e)
+
+            if isinstance(v, Result):
+                return v
             else:
                 return Ok(v)
 
         def wrapper(wrapper_func):
-            _nonlocal["func"] = wrapper_func
-
+            non_local.func = wrapper_func
             return wrapped
 
         if func is None:
@@ -195,39 +231,11 @@ class Result(object):
             v = func(*args, **kwargs)
         except raises as e:
             return Err(e)
+
+        if isinstance(v, Result):
+            return v
         else:
             return Ok(v)
-
-    @classmethod
-    def first_ok(cls, results):
-        """first ok or last err
-
-        Examples
-        --------
-        >>> d = {'legacy_key': 42}
-        >>> (orz.first_ok([
-        ...      orz.ok(d.get('key')).check(lambda v: v is not None)
-        ...      orz.ok(d.get('legacy_key')).check(lambda v: v is not None))
-        ...    ]
-        ...  .get_or(0)
-        ... )
-        42
-
-        Parameters
-        ----------
-        results : Iterator[Result]
-
-        Returns
-        -------
-        Result
-            first ok or last err in parameters
-        """
-        result = None
-        for result in results:
-            if result.is_ok():
-                return result
-        return result
-
 
 class Ok(Result):
     __slots__ = "_value"
@@ -289,15 +297,15 @@ class Ok(Result):
 
         return result
 
-    def check(self, func, error=UnSet):
+    def check(self, func, err=UnSet):
         if func(self._value):
             return self
         else:
-            if error is UnSet:
-                error = InvalidValueError(
+            if err is UnSet:
+                err = InvalidValueError(
                     "{} was failed to pass the check: {!r}".format(self, func)
                 )
-            return Err(error)
+            return Err(err)
 
     def err_then(self, func, catch_raises=None):
         return self
@@ -306,7 +314,7 @@ class Ok(Result):
 class Err(Result):
     __slots__ = "_error"
 
-    def __init__(self, error):
+    def __init__(self, error=None):
         if isinstance(error, Err):
             error = error.error
         elif isinstance(error, Ok):
