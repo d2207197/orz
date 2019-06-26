@@ -25,8 +25,8 @@ def test_err():
     assert rz.is_ok() is False
     assert orz.Err("failed") == orz.Err("failed")
     assert orz.Err("failed") != orz.Err("wrong")
-    assert str(rz) == "Err(ValueError('failed',))"
-    assert repr(rz) == "Err(ValueError('failed',))"
+    assert str(rz).startswith("Err(ValueError('failed'")
+    assert repr(rz).startswith("Err(ValueError('failed'")
 
     with pytest.raises(AttributeError):
         assert rz.value == 42
