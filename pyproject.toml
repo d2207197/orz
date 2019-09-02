@@ -1,8 +1,8 @@
 [tool.poetry]
 name = 'orz'
-version = "0.1.1"
+version = "0.2.0"
 description = 'Result(Either) library for handling errors in monadic way'
-authors = ['顏孜羲 <joseph.yen@gmail.com>']
+authors = ['Yen, Tzu-Hsi <joseph.yen@gmail.com>']
 license = 'Apache-2.0'
 repository = 'https://github.com/d2207197/orz'
 # documentation =
@@ -30,6 +30,7 @@ pytest-pudb = '^0.7.0'
 python-language-server = '^0.26.1'
 pyls-isort = '^0.1.1'
 tox = "^3.12"
+pytest-cov = "^2.7"
 
 [build-system]
 requires = ['poetry>=0.12']

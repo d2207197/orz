@@ -1,5 +1,5 @@
-__all__ = ["InvalidValueError"]
+__all__ = ["CheckError"]
 
 
-class InvalidValueError(Exception):
+class CheckError(Exception):
     pass

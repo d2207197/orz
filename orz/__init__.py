@@ -1,12 +1,11 @@
-from .result import Result, Ok, Err, as_result, catch, resultify, first_ok
-from .exceptions import InvalidValueError
+from .result import Result, Ok, Err, ensure, catch, first_ok
+from .exceptions import CheckError
 
 __all__ = [
     'Result',
     'Ok',
     'Err',
-    'as_result'
+    'ensure'
     'catch',
-    'resultify',
     'first_ok'
 ]

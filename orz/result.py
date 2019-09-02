@@ -1,18 +1,18 @@
 import inspect
-import warnings
-from abc import abstractmethod, abstractproperty
-from functools import wraps
+from abc import abstractmethod
 
-from .exceptions import InvalidValueError
+from .exceptions import CheckError
 
-__all__ = ["Result", "Ok", "Err", "as_result", "catch", "resultify", "first_ok"]
+__all__ = ["Result", "Ok", "Err", "ensure", "catch", "first_ok"]
 
 
 class UnSet(object):
     pass
 
+
 class NonLocal(object):
     pass
+
 
 class Result(object):
     @abstractmethod
@@ -56,7 +56,7 @@ class Result(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_or_raise(self, default_error=None):
+    def get_or_raise(self, error=None):
         raise NotImplementedError()
 
     @abstractmethod
@@ -79,163 +79,6 @@ class Result(object):
     def __or__(self):
         raise NotImplementedError()
 
-    @classmethod
-    def as_result(cls, obj):
-        if isinstance(obj, Result):
-            return obj
-
-        return Ok(obj)
-
-    @classmethod
-    def is_result(cls, obj):
-        if isinstance(obj, Result):
-            return True
-
-        return False
-
-    @classmethod
-    def all(cls, *results, **kw_results):
-        """returns an Ok of all values if all ok, or an Err of first Err
-
-        Examples
-        --------
-        >>> d = {'n1': 1, 'n2': 2}
-        >>> n1_rz = orz.catch(lambda: d['n1'], raises=KeyError)
-        >>> n2_rz = orz.catch(lambda: d['n2'], raises=KeyError)
-        >>> (orz.all(n1_rz, n2_rz)
-        ...  .then(lambda vs: sum(vs))
-        ...  .get_or_raise()
-        ... )
-        3
-
-        >>> (orz.all(n1=n1_rz, n2=n2_rz)
-        ...  .then(lambda n1, n2: sum(vs))
-        ...  .get_or_raise()
-        ... )
-        3
-
-        Parameters
-        ----------
-        results : Iterator[orz.Result]
-
-        Returns
-        -------
-        orz.Result
-
-        """
-        rzs = []
-        for rz in results:
-            if rz.is_err():
-                return rz
-            elif rz.is_ok():
-                rzs.append(rz)
-
-        return Ok(rzs)
-
-    @classmethod
-    def first_ok(cls, results):
-        """first ok or last err
-
-        Examples
-        --------
-        >>> d = {'legacy_key': 42}
-        >>> (orz.first_ok([
-        ...      orz.ok(d.get('key')).check(lambda v: v is not None)
-        ...      orz.ok(d.get('legacy_key')).check(lambda v: v is not None))
-        ...    ]
-        ...  .get_or(0)
-        ... )
-        42
-
-        Parameters
-        ----------
-        results : Iterator[Result]
-
-        Returns
-        -------
-        Result
-            first ok or last err in parameters
-        """
-        result = None
-        for result in results:
-            if result.is_ok():
-                return result
-        return result
-
-
-    @classmethod
-    def resultify(cls, raises=(Exception,), func=None):
-        if isinstance(raises, list):
-            raises = tuple(raises)
-        non_local = NonLocal()
-        non_local.func = func
-
-        def wrapped(*args, **kwargs):
-            try:
-                v = non_local.func(*args, **kwargs)
-            except raises as e:
-                return Err(e)
-
-            if isinstance(v, Result):
-                return v
-            else:
-                return Ok(v)
-
-        def wrapper(wrapper_func):
-            non_local.func = wrapper_func
-            return wrapped
-
-        if func is None:
-            return wrapper
-        else:
-            return wrapped
-
-    @classmethod
-    def catch(cls, raises=(Exception,), func=None, *args, **kwargs):
-        """catch exception and return Ok or Err
-
-        Examples
-        --------
-        >>> d = {'a': 40}
-        >>> get_value = lambda k: d[k]
-        >>> (orz.catch(get_value, 'a', raises=KeyError)
-        ...     .map(lambda v: v + 2)
-        ...     .get_or(0))
-        42
-        >>> (orz.catch(get_value, 'b', raises=[KeyError])
-        ...     .map(lambda v: v + 2)
-        ...     .get_or(0))
-        0
-
-        Parameters
-        ----------
-        raises : Tuple[Exception, ...]
-            exceptions to be catch
-        func : Function
-            function will be called without arguments
-        *args
-            arguments for `func`
-        **kwargs
-            arguments for `func`
-
-        Returns
-        -------
-        orz.Result
-
-        """
-        if not callable(func):
-            raise ValueError("value of `func` argument should be a callable")
-        if isinstance(raises, list):
-            raises = tuple(raises)
-        try:
-            v = func(*args, **kwargs)
-        except raises as e:
-            return Err(e)
-
-        if isinstance(v, Result):
-            return v
-        else:
-            return Ok(v)
 
 class Ok(Result):
     __slots__ = "_value"
@@ -280,7 +123,7 @@ class Ok(Result):
     def get_or(self, default):
         return self._value
 
-    def get_or_raise(self, default_error=None):
+    def get_or_raise(self, error=None):
         return self._value
 
     def then(self, func, catch_raises=None):
@@ -292,22 +135,36 @@ class Ok(Result):
             except catch_raises as e:
                 result = Err(e)
 
-        if not isinstance(result, Result):
-            result = Ok(result)
+        return ensure(result)
 
-        return result
+    def then_unpack(self, func, catch_raises=None):
+        return self.then(lambda value: func(*value), catch_raises=catch_raises)
 
     def check(self, func, err=UnSet):
         if func(self._value):
             return self
-        else:
-            if err is UnSet:
-                err = InvalidValueError(
-                    "{} was failed to pass the check: {!r}".format(self, func)
+
+        if err is UnSet:
+            err = CheckError("{} was failed to pass the check: {!r}".format(self, func))
+        return Err(err)
+
+    def check_not_none(self, err=UnSet):
+        if self._value is not None:
+            return self
+
+        if err is UnSet:
+            caller = inspect.getframeinfo(inspect.stack()[1][0])
+            err = CheckError(
+                "failed to pass not None check: {}:{}".format(
+                    caller.filename, caller.lineno
                 )
-            return Err(err)
+            )
+        return Err(err)
 
     def err_then(self, func, catch_raises=None):
+        return self
+
+    def err_then_unpack(self, func, catch_raises=None):
         return self
 
 
@@ -354,16 +211,19 @@ class Err(Result):
     def get_or(self, default):
         return default
 
-    def get_or_raise(self, default_error=None):
-        if default_error is not None:
-            raise default_error
+    def get_or_raise(self, error=None):
+        if error is not None:
+            raise error
         else:
             raise self._error
 
     def then(self, func):
         return self
 
-    def check(self, func, error=UnSet):
+    def check(self, func, err=UnSet):
+        return self
+
+    def check_not_none(self, err=UnSet):
         return self
 
     def err_then(self, func, catch_raises=None):
@@ -375,16 +235,179 @@ class Err(Result):
             except catch_raises as e:
                 result = Err(e)
 
-        if not isinstance(result, Result):
-            result = Ok(result)
+        return ensure(result)
 
-        return result
+    def err_then_unpack(self, func, catch_raises=None):
+        return self.then(lambda value: func(*value), catch_raises=catch_raises)
 
 
 Result.Ok = Ok
 Result.Err = Err
 
-as_result = Result.as_result
-first_ok = Result.first_ok
-catch = Result.catch
-resultify = Result.resultify
+
+def first_ok(results):
+    """first ok or last err
+
+    Examples
+    --------
+    >>> d = {'legacy_key': 42}
+    >>> (orz.first_ok([
+    ...      orz.ok(d.get('key')).check(lambda v: v is not None)
+    ...      orz.ok(d.get('legacy_key')).check(lambda v: v is not None))
+    ...    ]
+    ...  .get_or(0)
+    ... )
+    42
+
+    Parameters
+    ----------
+    results : Iterator[Result]
+
+    Returns
+    -------
+    Result
+        first ok or last err in parameters
+    """
+    result = None
+    for result in results:
+        if result.is_ok():
+            return result
+    return result
+
+
+def first_ok_wrap(func):
+    def wrapped(*args, **kwargs):
+        return first_ok(func(*args, **kwargs))
+
+    return wrapped
+
+
+first_ok.wrap = first_ok_wrap
+
+
+def catch(raises=(Exception,), func=None):
+    """catch exception and return Ok or Err
+
+    Examples
+    --------
+    >>> d = {'a': 40}
+    >>> get_value = lambda k: d[k]
+    >>> (orz.catch(get_value, 'a', raises=KeyError)
+    ...     .map(lambda v: v + 2)
+    ...     .get_or(0))
+    42
+    >>> (orz.catch(get_value, 'b', raises=[KeyError])
+    ...     .map(lambda v: v + 2)
+    ...     .get_or(0))
+    0
+
+    Parameters
+    ----------
+    raises : Tuple[Exception, ...]
+        exceptions to be catch
+    func : Function
+        function will be called without arguments
+    *args
+        arguments for `func`
+    **kwargs
+        arguments for `func`
+
+    Returns
+    -------
+    orz.Result
+
+    """
+    if isinstance(raises, list):
+        raises = tuple(raises)
+
+    non_local = NonLocal()  # nonlocal support for Python 2
+    non_local.func = func
+    non_local.raises = raises
+
+    def wrapped(*args, **kwargs):
+        if not callable(non_local.func):
+            raise ValueError("value of `func` argument should be a callable")
+        if isinstance(non_local.raises, list):
+            raises = tuple(non_local.raises)
+        try:
+            v = non_local.func(*args, **kwargs)
+        except non_local.raises as e:
+            return Err(e)
+
+        if isinstance(v, Result):
+            return v
+        else:
+            return Ok(v)
+
+    if func is None:
+
+        def wrapper(wrapper_func):
+            non_local.func = wrapper_func
+            return wrapped
+
+        return wrapper
+    else:
+        return wrapped
+
+
+def all(*results, **kw_results):
+    """returns an Ok of all values if all ok, or an Err of first Err
+
+    Examples
+    --------
+    >>> d = {'n1': 1, 'n2': 2}
+    >>> n1_rz = orz.catch(lambda: d['n1'], raises=KeyError)
+    >>> n2_rz = orz.catch(lambda: d['n2'], raises=KeyError)
+    >>> (orz.all(n1_rz, n2_rz)
+    ...  .then(lambda vs: sum(vs))
+    ...  .get_or_raise()
+    ... )
+    3
+
+    >>> (orz.all(n1=n1_rz, n2=n2_rz)
+    ...  .then(lambda n1, n2: sum(vs))
+    ...  .get_or_raise()
+    ... )
+    3
+
+    Parameters
+    ----------
+    results : Iterator[orz.Result]
+
+    Returns
+    -------
+    orz.Result
+
+    """
+    rzs = []
+    for rz in results:
+        if rz.is_err():
+            return rz
+        elif rz.is_ok():
+            rzs.append(rz)
+
+    return Ok(rzs)
+
+
+def ensure(obj):
+    """ensure object is a Result instance
+
+    Returns
+    - ``obj`` if obj is an instance of Result
+    - ``Err(obj)`` if obj is an instance of Exception
+    - ``Ok(obj)`` for others
+
+    """
+    if isinstance(obj, Result):
+        return obj
+    elif isinstance(obj, Exception):
+        return Err(obj)
+    else:
+        return Ok(obj)
+
+
+def is_result(obj):
+    if isinstance(obj, Result):
+        return True
+
+    return False
