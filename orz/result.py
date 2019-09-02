@@ -1,5 +1,6 @@
 import inspect
 from abc import abstractmethod
+import functools as fnt
 
 from .exceptions import CheckError
 
@@ -324,30 +325,26 @@ def catch(raises=(Exception,), func=None):
     non_local.func = func
     non_local.raises = raises
 
-    def wrapped(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         if not callable(non_local.func):
             raise ValueError("value of `func` argument should be a callable")
-        if isinstance(non_local.raises, list):
-            raises = tuple(non_local.raises)
+
         try:
             v = non_local.func(*args, **kwargs)
         except non_local.raises as e:
             return Err(e)
 
-        if isinstance(v, Result):
-            return v
-        else:
-            return Ok(v)
+        return ensure(v)
 
     if func is None:
 
-        def wrapper(wrapper_func):
-            non_local.func = wrapper_func
-            return wrapped
+        def deco(func):
+            non_local.func = func
+            return fnt.update_wrapper(wrapper, func)
 
-        return wrapper
+        return deco
     else:
-        return wrapped
+        return fnt.update_wrapper(wrapper, func)
 
 
 def all(*results, **kw_results):

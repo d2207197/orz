@@ -1,6 +1,6 @@
 [tool.poetry]
 name = 'orz'
-version = "0.2.0"
+version = "0.2.1"
 description = 'Result(Either) library for handling errors in monadic way'
 authors = ['Yen, Tzu-Hsi <joseph.yen@gmail.com>']
 license = 'Apache-2.0'
