@@ -1,11 +1,4 @@
-from .result import Result, Ok, Err, ensure, catch, first_ok
+from .result import Result, Ok, Err, ensure, catch, first_ok, all, is_result
 from .exceptions import CheckError
 
-__all__ = [
-    'Result',
-    'Ok',
-    'Err',
-    'ensure'
-    'catch',
-    'first_ok'
-]
+__all__ = ["Result", "Ok", "Err", "ensure" "catch", "first_ok", "all", "is_result"]

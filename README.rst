@@ -20,63 +20,165 @@ Just like other Python package, install it by `pip <https://pip.pypa.io/en/stabl
 
    $ pip install orz
 
+
+Use ``orz.Ok`` or ``orz.Err`` explicitly for indicating success with return
+value, or failure with error message.
+
 .. code-block:: python
 
-   import orz
+   >>> import orz
 
-   def get_emails_rz(user):
-       if user not in user_email_table:
-           # Err for error
-           return orz.Err('no such user')
+   >>> def get_score_rz(subj):
+   ...     score_db = {'math': 80, 'physics': 95}
+   ...     if subj in score_db:
+   ...         return orz.Ok(score_db[subj])
+   ...     else:
+   ...         return orz.Err('subj does not exist: ' + subj)
 
-       # Ok for success
-       emails_rz = orz.Ok(user_emails_table['user'])
-       return emails_rz
+   >>> get_score_rz('math')
+   Ok(80)
+   >>> get_score_rz('bio')
+   Err('subj does not exist: bio')
 
+A handy decorator ``orz.catch`` for transforming normal function into Result-oriented function. Returned value would be wraped with ``orz.Ok`` and exceptions would be captured and wraped with ``orz.Err``.
 
-   # return first Ok value
-   @orz.first_ok.wrap
-   def get_message_rz(user):
-       # orz.ensure for ensuring the value is of Result type
-       # .check_not_none() transform Ok(None) into Err()
-       yield orz.ensure(get_daily_recommendation_message(user)).check_not_none()
+.. code-block:: python
 
-       # orz.catch() calls function and return Result
-       yield (orz.catch(Exception, get_weekly_recommendation, user)
-              .check_not_none())
+   >>> @orz.catch(raises=KeyError)
+   ... def get_score_rz(subj):
+   ...     score_db = {'math': 80, 'physics': 95}
+   ...     return score_db[subj]
 
-       yield orz.ensure(get_greeting_message(user))
-
-
-   # catch Exception and return Result
-   @orz.catch.wrap(RuntimeError)
-   def send_message_rz(user):
-       nick_rz = get_nick_rz(user)
-       email_rz = (
-         get_emails_rz(user)
-         .then(lambda emails: email[0], catch_raises=KeyError)
-         .check(lambda email: not email.endswith('test.com'))
-       )
-       message_rz = get_message_rz()
-
-       rz.then_unpack(lambda f, g: f+g)
-
-       email = email_rz.get_or_raise(RuntimeError("can't get email addr"))
-       message = message_rz.get_or_raise(RuntimeError("no available message"))
-       nick = nick_rz.get_or(default=user)
-
-       send_email.submit(
-         email=email,
-         title='Hi, {}'.format(nick),
-         message=message)
-
-       return nick, email
+   >>> get_score_rz('math')
+   Ok(80)
+   >>> get_score_rz('bio')
+   Err(KeyError('bio',))
 
 
-   (send_message_rz('joe')
-    .then_unpack(
-        lambda nick, email:
-            print('message for {}<{}> submitted'.format(nick, email)))
-    .or(
-   )
-   )
+Both ``Ok`` and ``Err`` are of ``Result`` type, they have the same set of methods for further processing. Create a processing pipeline with ``Result.then(func)`` or ``Result.err_then(func)``. The value in ``Ok`` would be transformed with ``then(func)`` and skip all ``err_then(func)``.
+
+.. code-block:: python
+
+   >>> def get_letter_grade_rz(score):
+   ...     if 90 <= score <= 100: return orz.Ok('A')
+   ...     elif 80 <= score < 90: return orz.Ok('B')
+   ...     elif 70 <= score < 80: return orz.Ok('C')
+   ...     elif 60 <= score < 70: return orz.Ok('D')
+   ...     elif 0 <= score <= 60: return orz.Ok('F')
+   ...     else: return orz.Err('Wrong value range')
+
+   >>> get_score_rz('math')
+   Ok(80)
+   >>> get_score_rz('math').then(get_letter_grade_rz)
+   Ok('B')
+   >>> get_score_rz('bio')
+   Err(KeyError('bio',))
+   >>> get_score_rz('bio').then(get_letter_grade_rz)
+   Err(KeyError('bio',))
+
+
+The ``func`` pass to the ``then(func, catch_raises=None)`` or ``err_then(func,
+catch_raises=None)`` can be a normal function. The returned value would be
+wraped with ``Ok`` automatically. Use ``catch_raises`` to capture exceptions.
+The captured exception would be wraped with ``Err`` and returned.
+
+.. code-block:: python
+
+   >>> letter_grade_rz = get_score_rz('math').then(get_letter_grade_rz)
+   >>> msg_rz = letter_grade_rz.then(lambda letter_grade: 'your grade is {}'.format(letter_grade))
+   >>> msg_rz
+   Ok('your grade is B')
+
+
+Connect everything together. And use ``Result.get_or(default)`` or
+``Result.get_or_raise(error)`` to get the final value.
+
+
+.. code-block:: python
+
+   >>> def get_grade_msg(subj):
+   ...      return (
+   ...          get_score_rz(subj)
+   ...          .then(get_letter_grade_rz)
+   ...          .then(lambda letter_grade: 'your grade is {}'.format(letter_grade))
+   ...          .get_or('something went wrong'))
+
+   >>> get_grade_msg('math')
+   'your grade is B'
+   >>> get_grade_msg('bio')
+   'something went wrong'
+
+Or if you prefer to raise an exception rather than get a fallback value.
+
+.. code-block:: python
+
+   >>> def get_grade_msg(subj):
+   ...      return (
+   ...          get_score_rz(subj)
+   ...          .then(get_letter_grade_rz)
+   ...          .then(lambda letter_grade: 'your grade is {}'.format(letter_grade))
+   ...          .get_or_raise())
+
+   >>> get_grade_msg('math')
+   'your grade is B'
+   >>> get_grade_msg('bio')
+   Traceback (most recent call last):
+   ...
+   KeyError: 'bio'
+
+
+More in Orz
+===========
+
+Ensure all values are ``Ok`` and handle them together.
+
+.. code-block:: python
+
+   >>> orz.all([orz.Ok(39), orz.Ok(2), orz.Ok(1)])
+   Ok([39, 2, 1])
+   >>> orz.all([orz.Ok(40), orz.Err('wrong value'), orz.Ok(1)])
+   Err('wrong value')
+
+   >>> orz.all([orz.Ok(40), orz.Ok(2)]).then(lambda values: sum(values))
+   Ok(42)
+   >>> orz.all([orz.Ok(40), orz.Ok(2)]).then_unpack(lambda n1, n2: n1 + n2)
+   Ok(42)
+
+Find the first ``Ok``.
+
+.. code-block:: python
+
+   >>> orz.first_ok([orz.Err('wrong value'), orz.Ok(42), orz.Ok(3)])
+   Ok(42)
+
+Ensure value is in ``orz.Result`` type.
+
+.. code-block:: python
+
+   >>> orz.ensure(42)
+   Ok(42)
+   >>> orz.ensure(orz.Ok(42))
+   Ok(42)
+   >>> orz.ensure(orz.Err('failed'))
+   Err('failed')
+   >>> orz.ensure(KeyError('a'))
+   Err(KeyError('a',))
+
+   >>> orz.is_result(orz.Ok(3))
+   True
+   >>> isinstance(orz.Ok(3), orz.Result)
+   True
+
+
+Check value.
+
+.. code-block:: python
+
+   >>> orz.Ok(3).check(lambda v: v > 0)
+   Ok(3)
+   >>> orz.Ok(-3).check(lambda v: v > 0)
+   Err(CheckError('Ok(-3) was failed to pass the check: <function <lambda> at ...>',))
+   >>> orz.Ok(3).check_not_none()
+   Ok(3)
+   >>> orz.Ok(None).check_not_none()
+   Err(CheckError('failed to pass not None check: ...',))

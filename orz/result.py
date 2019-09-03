@@ -4,7 +4,7 @@ import functools as fnt
 
 from .exceptions import CheckError
 
-__all__ = ["Result", "Ok", "Err", "ensure", "catch", "first_ok"]
+__all__ = ["Result", "Ok", "Err", "ensure", "catch", "first_ok", "all", "is_result"]
 
 
 class UnSet(object):
@@ -65,11 +65,23 @@ class Result(object):
         raise NotImplementedError()
 
     @abstractmethod
+    def then_unpack(self, func, catch_raises=None):
+        raise NotImplementedError()
+
+    @abstractmethod
     def check(self, func, error=UnSet):
         raise NotImplementedError()
 
     @abstractmethod
+    def check_not_none(self, err=UnSet):
+        raise NotImplementedError()
+
+    @abstractmethod
     def err_then(self, func, catch_raises=None):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def err_then_unpack(self, func, catch_raises=None):
         raise NotImplementedError()
 
     @abstractmethod
@@ -251,14 +263,14 @@ def first_ok(results):
 
     Examples
     --------
-    >>> d = {'legacy_key': 42}
-    >>> (orz.first_ok([
-    ...      orz.ok(d.get('key')).check(lambda v: v is not None)
-    ...      orz.ok(d.get('legacy_key')).check(lambda v: v is not None))
-    ...    ]
-    ...  .get_or(0)
-    ... )
-    42
+    >>> orz.first_ok([orz.Err('wrong value'), orz.Ok(42), orz.Ok(3)])
+    Ok(42)
+
+    >>> @orz.first_ok.wrap
+    >>> def get_value_rz(key):
+    ...     yield l1cache_rz(key)
+    ...     yield l2cache_rz(key)
+    ...     yield get_db_rz(key)
 
     Parameters
     ----------
@@ -291,16 +303,15 @@ def catch(raises=(Exception,), func=None):
 
     Examples
     --------
-    >>> d = {'a': 40}
-    >>> get_value = lambda k: d[k]
-    >>> (orz.catch(get_value, 'a', raises=KeyError)
-    ...     .map(lambda v: v + 2)
-    ...     .get_or(0))
-    42
-    >>> (orz.catch(get_value, 'b', raises=[KeyError])
-    ...     .map(lambda v: v + 2)
-    ...     .get_or(0))
-    0
+    >>> @orz.catch(raises=KeyError)
+    ... def get_score_rz(subj):
+    ...     score_db = {'math': 80, 'physics': 95}
+    ...     return score_db[subj]
+
+    >>> get_score_rz('math')
+    Ok(80)
+    >>> get_score_rz('bio')
+    Err(KeyError('bio',))
 
     Parameters
     ----------
@@ -347,25 +358,15 @@ def catch(raises=(Exception,), func=None):
         return fnt.update_wrapper(wrapper, func)
 
 
-def all(*results, **kw_results):
+def all(results):
     """returns an Ok of all values if all ok, or an Err of first Err
 
     Examples
     --------
-    >>> d = {'n1': 1, 'n2': 2}
-    >>> n1_rz = orz.catch(lambda: d['n1'], raises=KeyError)
-    >>> n2_rz = orz.catch(lambda: d['n2'], raises=KeyError)
-    >>> (orz.all(n1_rz, n2_rz)
-    ...  .then(lambda vs: sum(vs))
-    ...  .get_or_raise()
-    ... )
-    3
-
-    >>> (orz.all(n1=n1_rz, n2=n2_rz)
-    ...  .then(lambda n1, n2: sum(vs))
-    ...  .get_or_raise()
-    ... )
-    3
+    >>> orz.all([orz.Ok(39), orz.Ok(2), orz.Ok(1)])
+    Ok([39, 2, 1])
+    >>> orz.all([orz.Ok(40), orz.Err('wrong value'), orz.Ok(1)])
+    Err('wrong value')
 
     Parameters
     ----------
@@ -381,7 +382,7 @@ def all(*results, **kw_results):
         if rz.is_err():
             return rz
         elif rz.is_ok():
-            rzs.append(rz)
+            rzs.append(rz.value)
 
     return Ok(rzs)
 
