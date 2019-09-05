@@ -1,12 +1,13 @@
 [tool.poetry]
 name = 'orz'
-version = "0.3.0"
-description = 'Result(Either) library for handling errors in monadic way'
+version = "0.3.1"
+description = 'A Result(Either) like library to handle error fluently'
 authors = ['Yen, Tzu-Hsi <joseph.yen@gmail.com>']
 license = 'Apache-2.0'
 repository = 'https://github.com/d2207197/orz'
 # documentation =
 # homepage =
+readme = 'README.rst'
 
 keywords = [
   'result', 'monad', 'error', 'exception',
