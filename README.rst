@@ -21,8 +21,8 @@ Just like other Python package, install it by `pip <https://pip.pypa.io/en/stabl
    $ pip install orz
 
 
-Use ``orz.Ok`` or ``orz.Err`` explicitly for indicating success with return
-value, or failure with error message.
+Use ``orz.Ok`` or ``orz.Err`` explicitly for indicating success with the return
+value, or failure with an error message.
 
 .. code-block:: python
 
@@ -55,7 +55,7 @@ A handy decorator ``orz.catch`` for transforming normal function into Result-ori
    Err(KeyError('bio',))
 
 
-Both ``Ok`` and ``Err`` are of ``Result`` type, they have the same set of methods for further processing. Create a processing pipeline with ``Result.then(func)`` or ``Result.err_then(func)``. The value in ``Ok`` would be transformed with ``then(func)`` and skip all ``err_then(func)``.
+Both ``Ok`` and ``Err`` are of ``Result`` type, they have the same set of methods for further processing. The value in ``Ok`` would be transformed with ``then(func)``. And ``Err`` would skip the transformation, and propogate the error to the next stage.
 
 .. code-block:: python
 
@@ -77,10 +77,9 @@ Both ``Ok`` and ``Err`` are of ``Result`` type, they have the same set of method
    Err(KeyError('bio',))
 
 
-The ``func`` pass to the ``then(func, catch_raises=None)`` or ``err_then(func,
-catch_raises=None)`` can be a normal function. The returned value would be
-wraped with ``Ok`` automatically. Use ``catch_raises`` to capture exceptions.
-The captured exception would be wraped with ``Err`` and returned.
+The ``func`` pass to the ``then(func, catch_raises=None)`` can be a normal
+function which returns an ordinary value. The returned value would be wraped with
+``Ok`` automatically. Use ``catch_raises`` to capture exceptions and returned as an ``Err`` object.
 
 .. code-block:: python
 
@@ -89,9 +88,9 @@ The captured exception would be wraped with ``Err`` and returned.
    >>> msg_rz
    Ok('your grade is B')
 
-
-Connect everything together. And use ``Result.get_or(default)`` or
-``Result.get_or_raise(error)`` to get the final value.
+Connect all the ``then(func)`` calls together. And use
+``Result.get_or(default)`` to get the final
+value.
 
 
 .. code-block:: python
@@ -108,7 +107,7 @@ Connect everything together. And use ``Result.get_or(default)`` or
    >>> get_grade_msg('bio')
    'something went wrong'
 
-Or if you prefer to raise an exception rather than get a fallback value.
+If you prefer to raise an exception rather than get a fallback value, use ``get_or_raise(error)`` instead.
 
 .. code-block:: python
 
@@ -125,6 +124,30 @@ Or if you prefer to raise an exception rather than get a fallback value.
    Traceback (most recent call last):
    ...
    KeyError: 'bio'
+
+
+Handling ``Err``
+================
+
+Use ``err_then(func, catch_raises)`` to convert ``Err`` back to ``Ok`` or to other ``Err``.
+
+.. code-block:: python
+
+   >>> get_score_rz('bio')
+   Err(KeyError('bio',))
+   >>> get_score_rz('bio').then(get_letter_grade_rz)
+   Err(KeyError('bio',))
+   >>> (get_score_rz('bio')
+   ...  .err_then(lambda error: 0 if isinstance(error, KeyError) else error))
+   Ok(0)
+   >>> (get_score_rz('bio')
+   ...  .err_then(lambda error: 0 if isinstance(error, KeyError) else error)
+   ...  .then(get_letter_grade_rz))
+   Ok('F')
+   >>> (get_score_rz('bio')
+   ...  .then(get_letter_grade_rz)
+   ...  .err_then(lambda error: 'F' if isinstance(error, KeyError) else error))
+   Ok('F')
 
 
 More in Orz
