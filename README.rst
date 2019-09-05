@@ -270,3 +270,11 @@ Check if object is a Result
    True
    >>> isinstance(orz.Ok(3), orz.Result)
    True
+   >>> orz.Ok(3).is_ok()
+   True
+   >>> orz.Ok(3).is_err()
+   False
+   >>> orz.Err('E').is_ok()
+   False
+   >>> orz.Err('E').is_err()
+   True
