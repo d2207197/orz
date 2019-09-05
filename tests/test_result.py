@@ -145,40 +145,40 @@ def test_and_then_return_result():
     assert rz.error == "k not exist"
 
 
-def test_check():
-    rz = orz.Ok(3).check(lambda v: v > 0)
+def test_guard():
+    rz = orz.Ok(3).guard(lambda v: v > 0)
     assert rz.is_ok()
     assert rz.value == 3
 
-    rz = orz.Ok(3).check(lambda v: v < 0)
+    rz = orz.Ok(3).guard(lambda v: v < 0)
     assert rz.is_err()
     assert isinstance(rz.error, orz.CheckError)
-    assert "Ok(3) was failed to pass the check:" in repr(rz.error)
+    assert "Ok(3) was failed to pass the guard:" in repr(rz.error)
 
-    rz = orz.Err("failed").check(lambda v: v < 0)
+    rz = orz.Err("failed").guard(lambda v: v < 0)
     assert rz.is_err()
     assert rz == orz.Err("failed")
 
-    rz = orz.Err("failed").check(lambda v: True)
+    rz = orz.Err("failed").guard(lambda v: True)
     assert rz.is_err()
     assert rz == orz.Err("failed")
 
-    rz = orz.Ok(3).check(lambda v: v < 0, err='check failed')
+    rz = orz.Ok(3).guard(lambda v: v < 0, err='guard failed')
     assert rz.is_err()
-    assert rz == orz.Err("check failed")
+    assert rz == orz.Err("guard failed")
 
-    rz = orz.Ok(3).check(lambda v: v < 0, err=orz.Err('check failed 2'))
+    rz = orz.Ok(3).guard(lambda v: v < 0, err=orz.Err('guard failed 2'))
     assert rz.is_err()
-    assert rz == orz.Err("check failed 2")
+    assert rz == orz.Err("guard failed 2")
 
-def test_check_not_none():
-    assert orz.Ok(3).check_not_none() == orz.Ok(3)
-    rz = orz.Ok(None).check_not_none()
+def test_guard_none():
+    assert orz.Ok(3).guard_none() == orz.Ok(3)
+    rz = orz.Ok(None).guard_none()
     assert rz.is_err()
     with pytest.raises(orz.CheckError):
         rz.get_or_raise()
 
-    rz = orz.Ok(None).check_not_none(err=TypeError('wrong'))
+    rz = orz.Ok(None).guard_none(err=TypeError('wrong'))
     assert rz.is_err()
     with pytest.raises(TypeError):
         rz.get_or_raise()

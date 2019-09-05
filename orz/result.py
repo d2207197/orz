@@ -1,10 +1,10 @@
+import functools as fnt
 import inspect
 from abc import abstractmethod
-import functools as fnt
 
 from .exceptions import CheckError
 
-__all__ = ["Result", "Ok", "Err", "ensure", "catch", "first_ok", "all", "is_result"]
+__all__ = ["Result", "Ok", "Err", "ensure", "catch", "first_ok", "all_", "is_result"]
 
 
 class UnSet(object):
@@ -69,11 +69,11 @@ class Result(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def check(self, func, error=UnSet):
+    def guard(self, pred, error=UnSet):
         raise NotImplementedError()
 
     @abstractmethod
-    def check_not_none(self, err=UnSet):
+    def guard_none(self, err=UnSet):
         raise NotImplementedError()
 
     @abstractmethod
@@ -90,6 +90,14 @@ class Result(object):
 
     @abstractmethod
     def __or__(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def then_all(self, *funcs):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def then_first_ok(self, *funcs):
         raise NotImplementedError()
 
 
@@ -153,22 +161,22 @@ class Ok(Result):
     def then_unpack(self, func, catch_raises=None):
         return self.then(lambda value: func(*value), catch_raises=catch_raises)
 
-    def check(self, func, err=UnSet):
-        if func(self._value):
+    def guard(self, pred, err=UnSet):
+        if pred(self._value):
             return self
 
         if err is UnSet:
-            err = CheckError("{} was failed to pass the check: {!r}".format(self, func))
+            err = CheckError("{} was failed to pass the guard: {!r}".format(self, pred))
         return Err(err)
 
-    def check_not_none(self, err=UnSet):
+    def guard_none(self, err=UnSet):
         if self._value is not None:
             return self
 
         if err is UnSet:
             caller = inspect.getframeinfo(inspect.stack()[1][0])
             err = CheckError(
-                "failed to pass not None check: {}:{}".format(
+                "failed to pass not None guard: {}:{}".format(
                     caller.filename, caller.lineno
                 )
             )
@@ -178,6 +186,15 @@ class Ok(Result):
         return self
 
     def err_then_unpack(self, func, catch_raises=None):
+        return self
+
+    def then_all(self, *funcs):
+        return all_(self.then(func) for func in funcs)
+
+    def then_first_ok(self, *funcs):
+        return first_ok(self.then(func) for func in funcs)
+
+    def fill(self, pred, value):
         return self
 
 
@@ -233,10 +250,10 @@ class Err(Result):
     def then(self, func):
         return self
 
-    def check(self, func, err=UnSet):
+    def guard(self, pred, err=UnSet):
         return self
 
-    def check_not_none(self, err=UnSet):
+    def guard_none(self, err=UnSet):
         return self
 
     def err_then(self, func, catch_raises=None):
@@ -252,6 +269,17 @@ class Err(Result):
 
     def err_then_unpack(self, func, catch_raises=None):
         return self.then(lambda value: func(*value), catch_raises=catch_raises)
+
+    def then_all(self, *funcs):
+        return self
+
+    def then_first_ok(self, *funcs):
+        return self
+
+    def fill(self, pred, value):
+        if pred(self._error):
+            return Ok(value)
+        return self
 
 
 Result.Ok = Ok
@@ -358,7 +386,7 @@ def catch(raises=(Exception,), func=None):
         return fnt.update_wrapper(wrapper, func)
 
 
-def all(results):
+def all_(results):
     """returns an Ok of all values if all ok, or an Err of first Err
 
     Examples

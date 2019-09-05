@@ -11,18 +11,28 @@ Existing Result type Python libraries, such as `dbrgn/result <https://github.com
 
 **orz** trying to make Result more pythonic and readable, useful in most cases.
 
-Getting Start
+Install Orz
 =============
 
-Just like other Python package, install it by `pip <https://pip.pypa.io/en/stable/>`_ into a `virtualenv <https://hynek.me/articles/virtualenv-lives/>`_, or use  `poetry <https://poetry.eustace.io/>`_ to automatically create and manage the virtualenv.
+Just like other Python package, install it by `pip
+<https://pip.pypa.io/en/stable/>`_ into a `virtualenv
+<https://hynek.me/articles/virtualenv-lives/>`_, or use `poetry
+<https://poetry.eustace.io/>`_ to automatically create and manage the
+virtualenv.
 
 .. code-block:: console
 
    $ pip install orz
 
+Getting Start
+=============
 
-Use ``orz.Ok`` or ``orz.Err`` explicitly for indicating success with the return
-value, or failure with an error message.
+Create a ``orz.Result`` object
+------------------------------
+
+Wrap the return value with ``orz.Ok`` explicitly for indicating success. And
+return an ``orz.Err`` object when something went wrong. Normally, the value wraped with
+``Err`` is an error message or an exception object.
 
 .. code-block:: python
 
@@ -40,7 +50,9 @@ value, or failure with an error message.
    >>> get_score_rz('bio')
    Err('subj does not exist: bio')
 
-A handy decorator ``orz.catch`` for transforming normal function into Result-oriented function. Returned value would be wraped with ``orz.Ok`` and exceptions would be captured and wraped with ``orz.Err``.
+A handy decorator ``orz.catch`` can transform normal function into a
+Result-oriented function. The return value would be wraped with ``orz.Ok``
+automatically, and exceptions would be captured and wraped with ``orz.Err``.
 
 .. code-block:: python
 
@@ -54,6 +66,8 @@ A handy decorator ``orz.catch`` for transforming normal function into Result-ori
    >>> get_score_rz('bio')
    Err(KeyError('bio',))
 
+Processing Pipeline
+-------------------
 
 Both ``Ok`` and ``Err`` are of ``Result`` type, they have the same set of methods for further processing. The value in ``Ok`` would be transformed with ``then(func)``. And ``Err`` would skip the transformation, and propogate the error to the next stage.
 
@@ -92,7 +106,6 @@ Connect all the ``then(func)`` calls together. And use
 ``Result.get_or(default)`` to get the final
 value.
 
-
 .. code-block:: python
 
    >>> def get_grade_msg(subj):
@@ -126,10 +139,10 @@ If you prefer to raise an exception rather than get a fallback value, use ``get_
    KeyError: 'bio'
 
 
-Handling ``Err``
-================
+Handling Error
+--------------
 
-Use ``err_then(func, catch_raises)`` to convert ``Err`` back to ``Ok`` or to other ``Err``.
+Use ``Result.err_then(func, catch_raises)`` to convert ``Err`` back to ``Ok`` or to other ``Err``.
 
 .. code-block:: python
 
@@ -150,10 +163,21 @@ Use ``err_then(func, catch_raises)`` to convert ``Err`` back to ``Ok`` or to oth
    Ok('F')
 
 
+Most of the time, use ``fill()`` is more concise to turn some ``Err`` back.
+
+.. code-block:: python
+
+   >>> get_score_rz('bio').fill(lambda error: isinstance(error, KeyError), 0)
+   Ok(0)
+
+
 More in Orz
 ===========
 
-Ensure all values are ``Ok`` and handle them together.
+Process Multiple Result objects
+-------------------------------
+
+To ensure all values are ``Ok`` and handle them together.
 
 .. code-block:: python
 
@@ -167,12 +191,60 @@ Ensure all values are ``Ok`` and handle them together.
    >>> orz.all([orz.Ok(40), orz.Ok(2)]).then_unpack(lambda n1, n2: n1 + n2)
    Ok(42)
 
-Find the first ``Ok``.
+
+``then_all()`` is useful when you want to apply multiple functions to the same value.
 
 .. code-block:: python
 
-   >>> orz.first_ok([orz.Err('wrong value'), orz.Ok(42), orz.Ok(3)])
+   >>> orz.Ok(3).then_all(lambda n: n+2, lambda n: n+1)
+   Ok([5, 4])
+   >>> orz.Ok(3).then_all(lambda n: n+2, lambda n: n+1).then_unpack(lambda n1, n2: n1 + n2)
+   Ok(9)
+
+Use ``first_ok()`` To get the first available value.
+
+.. code-block:: python
+
+   >>> orz.first_ok([orz.Err('E1'), orz.Ok(42), orz.Ok(3)])
    Ok(42)
+   >>> orz.first_ok([orz.Err('E1'), orz.Err('E2'), orz.Err('E3')])
+   Err('E3')
+   >>> orz.Ok(15).then_first_ok(
+   ...     lambda v: 2 if (v % 2) == 0 else orz.Err('not a factor'),
+   ...     lambda v: 3 if (v % 3) == 0 else orz.Err('not a factor'),
+   ...     lambda v: 5 if (v % 5) == 0 else orz.Err('not a factor'))
+   Ok(3)
+
+Guard value
+-----------
+
+.. code-block:: python
+
+   >>> orz.Ok(3).guard(lambda v: v > 0)
+   Ok(3)
+   >>> orz.Ok(-3).guard(lambda v: v > 0)
+   Err(CheckError('Ok(-3) was failed to pass the guard: <function <lambda> at ...>',))
+   >>> orz.Ok(-3).guard(lambda v: v > 0, err=orz.Err('value should be greater than zero'))
+   Err('value should be greater than zero')
+
+In fact, guard is a short-hand for a pattern of ``then()``.
+
+.. code-block:: python
+
+   >>>
+   >>> (orz.Ok(-3)
+   ...  .then(lambda v:
+   ...        orz.Ok(v) if v > 0
+   ...        else orz.Err('value should be greater than zero')))
+   Err('value should be greater than zero')
+
+   >>> orz.Ok(3).guard_none()
+   Ok(3)
+   >>> orz.Ok(None).guard_none()
+   Err(CheckError('failed to pass not None guard: ...',))
+
+Convert any value to Result type
+--------------------------------
 
 Ensure value is in ``orz.Result`` type.
 
@@ -182,26 +254,18 @@ Ensure value is in ``orz.Result`` type.
    Ok(42)
    >>> orz.ensure(orz.Ok(42))
    Ok(42)
+   >>> orz.ensure(orz.Ok(orz.Ok(42)))
+   Ok(42)
    >>> orz.ensure(orz.Err('failed'))
    Err('failed')
    >>> orz.ensure(KeyError('a'))
    Err(KeyError('a',))
 
+
+Check if object is a Result
+----------------------------
+
    >>> orz.is_result(orz.Ok(3))
    True
    >>> isinstance(orz.Ok(3), orz.Result)
    True
-
-
-Check value.
-
-.. code-block:: python
-
-   >>> orz.Ok(3).check(lambda v: v > 0)
-   Ok(3)
-   >>> orz.Ok(-3).check(lambda v: v > 0)
-   Err(CheckError('Ok(-3) was failed to pass the check: <function <lambda> at ...>',))
-   >>> orz.Ok(3).check_not_none()
-   Ok(3)
-   >>> orz.Ok(None).check_not_none()
-   Err(CheckError('failed to pass not None check: ...',))
