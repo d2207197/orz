@@ -163,7 +163,7 @@ Use ``Result.err_then(func, catch_raises)`` to convert ``Err`` back to ``Ok`` or
    Ok('F')
 
 
-Most of the time, use ``fill()`` is more concise to turn some ``Err`` back.
+Most of the time, ``fill()`` is more concise to turn some ``Err`` back.
 
 .. code-block:: python
 
@@ -231,7 +231,6 @@ In fact, guard is a short-hand for a pattern of ``then()``.
 
 .. code-block:: python
 
-   >>>
    >>> (orz.Ok(-3)
    ...  .then(lambda v:
    ...        orz.Ok(v) if v > 0
@@ -246,7 +245,7 @@ In fact, guard is a short-hand for a pattern of ``then()``.
 Convert any value to Result type
 --------------------------------
 
-Ensure value is in ``orz.Result`` type.
+``orz.ensure`` always returns a Result object.
 
 .. code-block:: python
 
@@ -264,6 +263,8 @@ Ensure value is in ``orz.Result`` type.
 
 Check if object is a Result
 ----------------------------
+
+.. code-block:: python
 
    >>> orz.is_result(orz.Ok(3))
    True
