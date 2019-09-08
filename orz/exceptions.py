@@ -1,5 +1,5 @@
-__all__ = ["CheckError"]
+__all__ = ["GuardError"]
 
 
-class CheckError(Exception):
+class GuardError(Exception):
     pass

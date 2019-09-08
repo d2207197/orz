@@ -152,7 +152,7 @@ def test_guard():
 
     rz = orz.Ok(3).guard(lambda v: v < 0)
     assert rz.is_err()
-    assert isinstance(rz.error, orz.CheckError)
+    assert isinstance(rz.error, orz.GuardError)
     assert "Ok(3) was failed to pass the guard:" in repr(rz.error)
 
     rz = orz.Err("failed").guard(lambda v: v < 0)
@@ -175,7 +175,7 @@ def test_guard_none():
     assert orz.Ok(3).guard_none() == orz.Ok(3)
     rz = orz.Ok(None).guard_none()
     assert rz.is_err()
-    with pytest.raises(orz.CheckError):
+    with pytest.raises(orz.GuardError):
         rz.get_or_raise()
 
     rz = orz.Ok(None).guard_none(err=TypeError('wrong'))

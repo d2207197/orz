@@ -2,7 +2,7 @@ import functools as fnt
 import inspect
 from abc import abstractmethod
 
-from .exceptions import CheckError
+from .exceptions import GuardError
 
 __all__ = ["Result", "Ok", "Err", "ensure", "catch", "first_ok", "all_", "is_result"]
 
@@ -166,7 +166,7 @@ class Ok(Result):
             return self
 
         if err is UnSet:
-            err = CheckError("{} was failed to pass the guard: {!r}".format(self, pred))
+            err = GuardError("{} was failed to pass the guard: {!r}".format(self, pred))
         return Err(err)
 
     def guard_none(self, err=UnSet):
@@ -175,7 +175,7 @@ class Ok(Result):
 
         if err is UnSet:
             caller = inspect.getframeinfo(inspect.stack()[1][0])
-            err = CheckError(
+            err = GuardError(
                 "failed to pass not None guard: {}:{}".format(
                     caller.filename, caller.lineno
                 )
@@ -248,6 +248,9 @@ class Err(Result):
             raise self._error
 
     def then(self, func):
+        return self
+
+    def then_unpack(self, func, catch_raises=None):
         return self
 
     def guard(self, pred, err=UnSet):

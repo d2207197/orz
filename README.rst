@@ -1,3 +1,4 @@
+=============================
 **orz**: Result type
 =============================
 
@@ -12,7 +13,7 @@ Existing Result type Python libraries, such as `dbrgn/result <https://github.com
 **orz** trying to make Result more pythonic and readable, useful in most cases.
 
 Install Orz
-=============
+============
 
 Just like other Python package, install it by `pip
 <https://pip.pypa.io/en/stable/>`_ into a `virtualenv
@@ -23,6 +24,33 @@ virtualenv.
 .. code-block:: console
 
    $ pip install orz
+
+Cheat Sheet
+============
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :func:`orz.Ok(value)`                                             | Create a Result object                                                                    |
+| :func:`orz.Err(error)`                                            |                                                                                           |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :func:`orz.catch(raises=(Exception,))(func)`                      | Wrap a function to return an `Ok` when success, or return an `Err` when exception is      |
+|                                                                   |raised                                                                                     |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :func:`[Ok|Err].then(func, catch_raises=None)`                    | Transform the wrapped value/error through `func`.                                         |
+| :func:`[Ok|Err].err_then(func, catch_raises=None)`                |                                                                                           |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :func:`[Ok|Err].then_unpack(func, catch_raises=None)`             | Same as `then()` and `err_then()`, but values are unpacked as `func` arguments.           |
+| :func:`[Ok|Err].err_then_unpack(func, catch_raises=None)`         |                                                                                           |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :func:`[Ok|Err].get_or(default)`                                  | `Ok`: Get the wrapped value.                                                              |
+| :func:`[Ok|Err].get_or_raise(self, error=None)`                   | `Err`: Raise excetpion or get default value.                                              |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :func:`[Ok|Err].guard(pred, err=UnSet)`                           | `Ok`: Make sure value in Ok pass the predicate function `pred`, or return an Err object.  |
+| :func:`[Ok|Err].guard_none(err=UnSet)`                            | `Err`: Return self.                                                                       |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :func:`[Ok|Err].fill(pred, value)`                                | `Ok`: Return self.                                                                        |
+|                                                                   | `Err`: Return `Ok(value)` if the wrapped error pass the predicate function.               |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+
+
 
 Getting Start
 =============
@@ -223,7 +251,7 @@ Guard value
    >>> orz.Ok(3).guard(lambda v: v > 0)
    Ok(3)
    >>> orz.Ok(-3).guard(lambda v: v > 0)
-   Err(CheckError('Ok(-3) was failed to pass the guard: <function <lambda> at ...>',))
+   Err(GuardError('Ok(-3) was failed to pass the guard: <function <lambda> at ...>',))
    >>> orz.Ok(-3).guard(lambda v: v > 0, err=orz.Err('value should be greater than zero'))
    Err('value should be greater than zero')
 
@@ -240,7 +268,7 @@ In fact, guard is a short-hand for a pattern of ``then()``.
    >>> orz.Ok(3).guard_none()
    Ok(3)
    >>> orz.Ok(None).guard_none()
-   Err(CheckError('failed to pass not None guard: ...',))
+   Err(GuardError('failed to pass not None guard: ...',))
 
 Convert any value to Result type
 --------------------------------
