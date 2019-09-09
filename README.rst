@@ -28,26 +28,35 @@ virtualenv.
 Cheat Sheet
 ============
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| :func:`orz.Ok(value)`                                             | Create a Result object                                                                    |
-| :func:`orz.Err(error)`                                            |                                                                                           |
+| `orz.Ok(value)`                                                   | Create a Result object                                                                    |
+| `orz.Err(error)`                                                  |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| :func:`orz.catch(raises=(Exception,))(func)`                      | Wrap a function to return an `Ok` when success, or return an `Err` when exception is      |
+| `orz.catch(raises=(Exception,))(func)`                            | Wrap a function to return an `Ok` when success, or return an `Err` when exception is      |
 |                                                                   |raised                                                                                     |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| :func:`[Ok|Err].then(func, catch_raises=None)`                    | Transform the wrapped value/error through `func`.                                         |
-| :func:`[Ok|Err].err_then(func, catch_raises=None)`                |                                                                                           |
+| `[Ok|Err].then(func, catch_raises=None)`                          | Transform the wrapped value/error through `func`.                                         |
+| `[Ok|Err].err_then(func, catch_raises=None)`                      |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| :func:`[Ok|Err].then_unpack(func, catch_raises=None)`             | Same as `then()` and `err_then()`, but values are unpacked as `func` arguments.           |
-| :func:`[Ok|Err].err_then_unpack(func, catch_raises=None)`         |                                                                                           |
+| `[Ok|Err].then_unpack(func, catch_raises=None)`                   | Same as `then()` and `err_then()`, but values are unpacked as arguments of `func`.        |
+| `[Ok|Err].err_then_unpack(func, catch_raises=None)`               |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| :func:`[Ok|Err].get_or(default)`                                  | `Ok`: Get the wrapped value.                                                              |
-| :func:`[Ok|Err].get_or_raise(self, error=None)`                   | `Err`: Raise excetpion or get default value.                                              |
+| `[Ok|Err].get_or(default)`                                        | `Ok`: Get the wrapped value.                                                              |
+| `[Ok|Err].get_or_raise(self, error=None)`                         | `Err`: Raise excetpion or get default value.                                              |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| :func:`[Ok|Err].guard(pred, err=UnSet)`                           | `Ok`: Make sure value in Ok pass the predicate function `pred`, or return an Err object.  |
-| :func:`[Ok|Err].guard_none(err=UnSet)`                            | `Err`: Return self.                                                                       |
+| `[Ok|Err].guard(pred, err=UnSet)`                                 | `Ok`: Make sure value in Ok pass the predicate function `pred`, or return an Err object.  |
+| `[Ok|Err].guard_none(err=UnSet)`                                  | `Err`: Return self.                                                                       |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| :func:`[Ok|Err].fill(pred, value)`                                | `Ok`: Return self.                                                                        |
+| `[Ok|Err].fill(pred, value)`                                      | `Ok`: Return self.                                                                        |
 |                                                                   | `Err`: Return `Ok(value)` if the wrapped error pass the predicate function.               |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| `bool([Ok|Err])`                                                  | Check whether the object is Ok or Err.                                                    |
+| `[Ok|Err].is_ok()`                                                |                                                                                           |
+| `[Ok|Err].is_err()`                                               |                                                                                           |
+| `isinstance(obj, orz.Ok)`                                         |                                                                                           |
+| `isinstance(obj, orz.Err)`                                        |                                                                                           |
++-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| `orz.is_result(obj)`                                              | Check if the object is a Result object(Ok or Err).                                        |
+| `isinstance(obj, orz.Result)`                                     |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
 
 
@@ -198,6 +207,25 @@ Most of the time, ``fill()`` is more concise to turn some ``Err`` back.
    >>> get_score_rz('bio').fill(lambda error: isinstance(error, KeyError), 0)
    Ok(0)
 
+Check whether the returned value is `Err` or `Ok`.
+
+.. code-block:: python
+
+   >>> num_rz = orz.Ok(42)
+   >>> num_rz.is_ok()
+   True
+   >>> num_rz.is_err()
+   False
+   >>> isinstance(num_rz, orz.Ok)
+   True
+   >>> bool(num_rz)
+   True
+   >>> bool(orz.Ok(True))  # you always get True for Ok
+   True
+   >>> bool(orz.Ok(False))  # you always get True for Ok
+   True
+   >>> bool(orz.Err(True))  # you always get True for Err
+   False
 
 More in Orz
 ===========
