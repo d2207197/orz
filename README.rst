@@ -28,35 +28,35 @@ virtualenv.
 Cheat Sheet
 ============
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `orz.Ok(value)`                                                   | Create a Result object                                                                    |
-| `orz.Err(error)`                                                  |                                                                                           |
+| ``orz.Ok(value)``                                                 | Create a Result object                                                                    |
+| ``orz.Err(error)``                                                |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `orz.catch(raises=(Exception,))(func)`                            | Wrap a function to return an `Ok` when success, or return an `Err` when exception is      |
+| ``orz.catch(raises=(Exception,))(func)``                            | Wrap a function to return an `Ok` when success, or return an `Err` when exception is      |
 |                                                                   |raised                                                                                     |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `[Ok|Err].then(func, catch_raises=None)`                          | Transform the wrapped value/error through `func`.                                         |
-| `[Ok|Err].err_then(func, catch_raises=None)`                      |                                                                                           |
+| ``[Ok|Err].then(func, catch_raises=None)``                          | Transform the wrapped value/error through `func`.                                         |
+| ``[Ok|Err].err_then(func, catch_raises=None)``                      |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `[Ok|Err].then_unpack(func, catch_raises=None)`                   | Same as `then()` and `err_then()`, but values are unpacked as arguments of `func`.        |
-| `[Ok|Err].err_then_unpack(func, catch_raises=None)`               |                                                                                           |
+| ``[Ok|Err].then_unpack(func, catch_raises=None)``                   | Same as ``then()`` and ``err_then()``, but values are unpacked as arguments of ``func``.        |
+| ``[Ok|Err].err_then_unpack(func, catch_raises=None)``               |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `[Ok|Err].get_or(default)`                                        | `Ok`: Get the wrapped value.                                                              |
-| `[Ok|Err].get_or_raise(self, error=None)`                         | `Err`: Raise excetpion or get default value.                                              |
+| ``[Ok|Err].get_or(default)``                                        | ``Ok``: Get the wrapped value.                                                              |
+| ``[Ok|Err].get_or_raise(self, error=None)``                         | ``Err``: Raise excetpion or get default value.                                              |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `[Ok|Err].guard(pred, err=UnSet)`                                 | `Ok`: Make sure value in Ok pass the predicate function `pred`, or return an Err object.  |
-| `[Ok|Err].guard_none(err=UnSet)`                                  | `Err`: Return self.                                                                       |
+| ``[Ok|Err].guard(pred, err=UnSet)``                                 | ``Ok``: Make sure value in Ok pass the predicate function ``pred``, or return an Err object.  |
+| ``[Ok|Err].guard_none(err=UnSet)``                                  | ``Err``: Return self.                                                                       |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `[Ok|Err].fill(pred, value)`                                      | `Ok`: Return self.                                                                        |
-|                                                                   | `Err`: Return `Ok(value)` if the wrapped error pass the predicate function.               |
+| ``[Ok|Err].fill(pred, value)``                                      | ``Ok``: Return self.                                                                        |
+|                                                                   | ``Err``: Return ``Ok(value)`` if the wrapped error pass the predicate function.               |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `bool([Ok|Err])`                                                  | Check whether the object is Ok or Err.                                                    |
-| `[Ok|Err].is_ok()`                                                |                                                                                           |
-| `[Ok|Err].is_err()`                                               |                                                                                           |
-| `isinstance(obj, orz.Ok)`                                         |                                                                                           |
-| `isinstance(obj, orz.Err)`                                        |                                                                                           |
+| ``bool([Ok|Err])``                                                  | Check whether the object is Ok or Err.                                                    |
+| ``[Ok|Err].is_ok()``                                                |                                                                                           |
+| ``[Ok|Err].is_err()``                                               |                                                                                           |
+| ``isinstance(obj, orz.Ok)``                                         |                                                                                           |
+| ``isinstance(obj, orz.Err)``                                        |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
-| `orz.is_result(obj)`                                              | Check if the object is a Result object(Ok or Err).                                        |
-| `isinstance(obj, orz.Result)`                                     |                                                                                           |
+| ``orz.is_result(obj)``                                              | Check if the object is a Result object(Ok or Err).                                        |
+| ``isinstance(obj, orz.Result)``                                     |                                                                                           |
 +-------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
 
 
