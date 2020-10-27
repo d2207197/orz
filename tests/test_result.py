@@ -1,5 +1,7 @@
 from __future__ import print_function
+
 import pytest
+
 import orz
 
 
@@ -42,7 +44,6 @@ def test_ensure():
     assert orz.ensure(orz.Err("failed")) == orz.Err("failed")
 
 
-
 def test_catch():
     def get_value(k):
         if not isinstance(k, str):
@@ -73,6 +74,7 @@ def test_catch():
 
     assert get_value_rz(3).is_err()
     assert isinstance(get_value_rz(3).error, ValueError)
+
 
 def test_auto_unwrap():
     assert orz.Ok(orz.Ok(orz.Ok(42))) == orz.Ok(42)
@@ -105,7 +107,6 @@ def test_and_then():
 
     rz = orz.Ok((2, 40)).then_unpack(lambda n1, n2: orz.Ok(n1 + n2))
     assert rz == orz.Ok(42)
-
 
 
 def test_and_then_catch_raises():
@@ -163,13 +164,22 @@ def test_guard():
     assert rz.is_err()
     assert rz == orz.Err("failed")
 
-    rz = orz.Ok(3).guard(lambda v: v < 0, err='guard failed')
+    rz = orz.Ok(3).guard(lambda v: v < 0, err="guard failed")
     assert rz.is_err()
     assert rz == orz.Err("guard failed")
 
-    rz = orz.Ok(3).guard(lambda v: v < 0, err=orz.Err('guard failed 2'))
+    rz = orz.Ok(3).guard(lambda v: v < 0, err=orz.Err("guard failed 2"))
     assert rz.is_err()
     assert rz == orz.Err("guard failed 2")
+
+    rz = orz.Ok(-3).guard(
+        lambda v: v >= 0,
+        err=lambda v: ValueError("should be greater than 0: {}".format(v)),
+    )
+    assert rz.is_err()
+    assert isinstance(rz._error, ValueError)
+    assert rz._error.args == ("should be greater than 0: -3",)
+
 
 def test_guard_none():
     assert orz.Ok(3).guard_none() == orz.Ok(3)
@@ -178,7 +188,7 @@ def test_guard_none():
     with pytest.raises(orz.GuardError):
         rz.get_or_raise()
 
-    rz = orz.Ok(None).guard_none(err=TypeError('wrong'))
+    rz = orz.Ok(None).guard_none(err=TypeError("wrong"))
     assert rz.is_err()
     with pytest.raises(TypeError):
         rz.get_or_raise()

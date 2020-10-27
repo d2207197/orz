@@ -69,7 +69,7 @@ class Result(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def guard(self, pred, error=UnSet):
+    def guard(self, pred, err=UnSet):
         raise NotImplementedError()
 
     @abstractmethod
@@ -141,7 +141,7 @@ class Ok(Result):
     def is_err(self):
         return False
 
-    def get_or(self, default):
+    def get_or(self, default=None):
         return self._value
 
     def get_or_raise(self, error=None):
@@ -167,6 +167,8 @@ class Ok(Result):
 
         if err is UnSet:
             err = GuardError("{} was failed to pass the guard: {!r}".format(self, pred))
+        elif callable(err):
+            err = err(self._value)
         return Err(err)
 
     def guard_none(self, err=UnSet):
@@ -238,7 +240,7 @@ class Err(Result):
     def is_err(self):
         return True
 
-    def get_or(self, default):
+    def get_or(self, default=None):
         return default
 
     def get_or_raise(self, error=None):
@@ -290,7 +292,7 @@ Result.Err = Err
 
 
 def first_ok(results):
-    """first ok or last err
+    """Get the first Ok or the last Err
 
     Examples
     --------
@@ -305,7 +307,7 @@ def first_ok(results):
 
     Parameters
     ----------
-    results : Iterator[Result]
+    results : Iterable[Result]
 
     Returns
     -------
@@ -390,7 +392,7 @@ def catch(raises=(Exception,), func=None):
 
 
 def all_(results):
-    """returns an Ok of all values if all ok, or an Err of first Err
+    """Get an Ok of all values if all are ok, or an Err of first Err
 
     Examples
     --------
@@ -401,7 +403,7 @@ def all_(results):
 
     Parameters
     ----------
-    results : Iterator[orz.Result]
+    results : Iterable[orz.Result]
 
     Returns
     -------
