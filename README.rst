@@ -59,7 +59,9 @@ Cheat Sheet
 | ``orz.is_result(obj)``                                            | Check if the object is a Result object(Ok or Err).                                                |
 | ``isinstance(obj, orz.Result)``                                   |                                                                                                   |
 +-------------------------------------------------------------------+---------------------------------------------------------------------------------------------------+
-| ``orz.all(results)``                                              | Get an Ok of all values if all are Ok, or an Err of first Err                                     |
+| ``orz.all(results)``                                              | Get an Ok which contains a list of values if all are Ok, or an Err of first Err                   |
++-------------------------------------------------------------------+---------------------------------------------------------------------------------------------------+
+| ``orz.any(results)``                                              | Get an Ok which contains a list of Ok values, or get last Err if all results are Err              |
 +-------------------------------------------------------------------+---------------------------------------------------------------------------------------------------+
 | ``orz.first_ok(results)``                                         | Get first ok or last err                                                                          |
 +-------------------------------------------------------------------+---------------------------------------------------------------------------------------------------+

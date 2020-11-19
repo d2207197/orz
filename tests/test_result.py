@@ -219,3 +219,19 @@ def test_first_ok():
 
     rz = orz.first_ok(get_candidates())
     assert rz == orz.Err("failed 2")
+
+
+def test_all():
+    assert orz.all([orz.Ok(39), orz.Ok(2), orz.Ok(1)]) == orz.Ok([39, 2, 1])
+    assert orz.all([orz.Ok(40), orz.Err("wrong value"), orz.Ok(1)]) == orz.Err(
+        "wrong value"
+    )
+    assert orz.all([]) == orz.Ok([])
+
+
+def test_any():
+    assert orz.any([orz.Ok(39), orz.Ok(2), orz.Ok(1)]) == orz.Ok([39, 2, 1])
+    assert orz.any([orz.Ok(40), orz.Err("wrong value"), orz.Ok(1)]) == orz.Ok([40, 1])
+    assert orz.any([orz.Err("err1"), orz.Err("err2")]) == orz.Err("err2")
+
+    assert orz.any([]) == orz.Err("Empty list")

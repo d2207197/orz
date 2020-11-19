@@ -392,7 +392,7 @@ def catch(raises=(Exception,), func=None):
 
 
 def all_(results):
-    """Get an Ok of all values if all are ok, or an Err of first Err
+    """Get an Ok which contains a list of values if all are Ok, or an Err of first Err
 
     Examples
     --------
@@ -418,6 +418,38 @@ def all_(results):
             rzs.append(rz.value)
 
     return Ok(rzs)
+
+
+def any_(results):
+    """Get an Ok which contains list of Ok values, or get last Err if all results are Err
+
+    Examples
+    --------
+    >>> orz.any([orz.Ok(39), orz.Err('wrong value'), orz.Ok(3)])
+    Ok([39, 3])
+    >>> orz.any([orz.Err('err1'), orz.Err('err2')])
+    Err('err2')
+
+    Parameters
+    ----------
+    results : Iterable[orz.Result]
+
+    Returns
+    -------
+    orz.Result
+    """
+    vs = []
+    rz = None
+    for rz in results:
+        if rz.is_ok():
+            vs.append(rz.value)
+
+    if len(vs) > 0:
+        return Ok(vs)
+    elif rz is None:
+        return Err("Empty list")
+    else:
+        return rz
 
 
 def ensure(obj):
